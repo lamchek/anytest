@@ -1,0 +1,38 @@
+[build]
+  # your built Unity output
+  publish   = "WebGLBuild"
+  # where your serverless functions live
+  functions = "netlify/functions"
+
+# (optional) if you need SPA fallback
+[[redirects]]
+  from = "/*"
+  to   = "/index.html"
+  status = 200
+
+[[headers]]
+for = "/*.wasm.br"
+[headers.values]
+Content-Type   = "application/wasm"
+Content-Encoding = "br"
+Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+for = "/*.data.br"
+[headers.values]
+Content-Type   = "application/octet-stream"
+Content-Encoding = "br"
+Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+for = "/*.js.br"
+[headers.values]
+Content-Type   = "application/javascript; charset=UTF-8"
+Content-Encoding = "br"
+Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+for = "/*.br"
+[headers.values]
+Content-Encoding = "br"
+Cache-Control = "public, max-age=31536000, immutable"
