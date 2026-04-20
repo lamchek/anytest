@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en-us">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>English H</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no, maximum-scale=1">
+    <link rel="shortcut icon" href="TemplateData/favicon.ico">
+    <link rel="stylesheet" href="TemplateData/style.css">
+    <link rel="stylesheet" type="text/css" href="TemplateData/loading-bar.css"/>
+    <link rel="stylesheet" href="TemplateData/spinner.css">
+</head>
+<body>
+<div id="background"></div>
+<div id="unity-container" class="unity-desktop">
+    <canvas id="unity-canvas" tabindex="-1"></canvas>
+    <div id="unity-custom-loading-screen">
+        <div id="custom-logo-background">
+            <div id="logo-box" style="justify-content: center; display: flex">
+                <div id="logo"></div>
+            </div>
+            <div id="progress-box">
+                <div class="lds-ellipsis">
+                    <div></div>
+                    <div></div>
+                    <div></div>
+                    <div></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="unity-custom-loader-bar">
+        <div id="loader-box">
+            <div id="loader-bar">
+                <div class="lds-ellipsis">
+                    <div></div>
+                    <div></div>
+                    <div></div>
+                    <div></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="unity-warning"></div>
+    <div id="unity-footer">
+        <div id="unity-webgl-logo"></div>
+        <div id="unity-fullscreen-button"></div>
+        <div id="unity-build-title">English Extract</div>
+    </div>
+</div>
+<script src='JsCursorLockChangeHandler.js'></script>
+<script src='JsSwitchAudioContext.js'></script>
+<script src='JsReloadPageHandler.js'></script>
+<script src='JsFirstFrame.js'></script>
+<script src='JsMouseLeaveMouseEnter.js'></script>
+<script src='JsLoaderBar.js'></script>
+<script src='JsClearUrl.js'></script>
+<script src='JsChangeUrlAndTitle.js'></script>
+<script src="overlayinfo.js"></script>
+<script src="quality-toolbar.js"></script>
+<script src="ext-slider-positioner.js"></script>
+<script>console.log('ESP loaded?', !!window.ExtSliderPositioner);</script>
+<!-- Centered 59% layout logic -->
+<script>
+    (function setupCenteredCanvas(options) {
+        const AREA_FRACTION = (options && options.areaFraction) || 0.60;
+        const EDGE_SNAP_EPS = (options && options.edgeSnapEps) || 0.5;
+        const CONTAINER_ID = (options && options.containerId) || 'unity-container';
+        const CANVAS_ID = (options && options.canvasId) || 'unity-canvas';
+
+        const container = document.getElementById(CONTAINER_ID);
+        const canvas = document.getElementById(CANVAS_ID);
+        if (!container || !canvas) return;
+
+        // Ensure predictable positioning
+        container.style.position = 'fixed';
+        container.style.boxSizing = 'border-box';
+        container.style.transform = 'none';
+        container.style.margin = '0';
+        canvas.style.width = '100%';
+        canvas.style.height = '100%';
+        canvas.style.display = 'block';
+
+        function getViewportRect() {
+            const vv = window.visualViewport;
+            const vw = vv ? vv.width : window.innerWidth;
+            const vh = vv ? vv.height : window.innerHeight;
+            const ox = vv ? vv.offsetLeft : 0;
+            const oy = vv ? vv.offsetTop : 0;
+            return { vw, vh, ox, oy };
+        }
+
+        function computeRect() {
+            const { vw, vh, ox, oy } = getViewportRect();
+
+            const isLandscape = vw >= vh;
+
+            // Всегда хотим 1:2 => width/height = 0.5
+            const r = 0.5;
+
+            // Переключатель режима для landscape:
+            // true  = landscape -> MAX contain (игнорируем AREA_FRACTION)
+            // false = landscape -> тоже AREA_FRACTION (как раньше)
+            const LANDSCAPE_MAXIMIZE = true;
+
+            let w, h;
+
+            if (isLandscape && LANDSCAPE_MAXIMIZE) {
+                // ---- LANDSCAPE: максимально возможный размер 1:2 (contain) ----
+                // Если viewport "слишком широкий", упираемся в высоту; иначе — в ширину
+                if (vw / vh >= r) {
+                    h = vh;
+                    w = h * r;
+                } else {
+                    w = vw;
+                    h = w / r;
+                }
+            } else {
+                // ---- PORTRAIT (и/или любой режим): ваша AREA_FRACTION-логика ----
+                const A = AREA_FRACTION * vw * vh;
+                w = Math.sqrt(A * r);
+                h = w / r;
+
+                // clamp чтобы точно влезло
+                if (w > vw || h > vh) {
+                    const scale = Math.min(vw / w, vh / h);
+                    w *= scale;
+                    h *= scale;
+                }
+
+                if (vw - w < EDGE_SNAP_EPS) w = vw;
+                if (vh - h < EDGE_SNAP_EPS) h = vh;
+
+                w = Math.min(w, vw);
+                h = Math.min(h, vh);
+            }
+
+            const x = ox + (vw - w) / 2;
+            const y = oy + (vh - h) / 2;
+            return { x, y, w, h };
+        }
+
+        function layoutCanvas() {
+            const { x, y, w, h } = computeRect();
+            container.style.left = x + 'px';
+            container.style.top = y + 'px';
+            container.style.width = w + 'px';
+            container.style.height = h + 'px';
+        }
+
+        // Expose so you can call it before creating Unity
+        window.u59LayoutCanvas = layoutCanvas;
+
+        // Initial layout and listeners
+        layoutCanvas();
+        window.addEventListener('resize', layoutCanvas, { passive: true });
+        window.addEventListener('orientationchange', () => setTimeout(layoutCanvas, 0), { passive: true });
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', layoutCanvas, { passive: true });
+            window.visualViewport.addEventListener('scroll', layoutCanvas, { passive: true });
+        }
+    })();
+</script>
+<!--<script>-->
+<!--    /* global getWasmTableEntry, wasmTable */-->
+<!--    if (typeof getDynCaller !== 'function') {-->
+<!--        // Важно: именно var/function на глобальном уровне, чтобы framework.js видел идентификатор getDynCaller-->
+<!--        var getDynCaller = function (sig, ptr) {-->
+<!--            return function () {-->
+<!--                // 1) самый частый способ в новых сборках-->
+<!--                if (typeof getWasmTableEntry === 'function') {-->
+<!--                    return getWasmTableEntry(ptr).apply(null, arguments);-->
+<!--                }-->
+<!--                // 2) запасной — через wasmTable (если он доступен глобально)-->
+<!--                if (typeof wasmTable !== 'undefined' && wasmTable && typeof wasmTable.get === 'function') {-->
+<!--                    return wasmTable.get(ptr).apply(null, arguments);-->
+<!--                }-->
+
+<!--                // 3) последний запасной (если вдруг Module глобальный)-->
+<!--                if (typeof Module !== 'undefined' && Module && Module.wasmTable && typeof Module.wasmTable.get === 'function') {-->
+<!--                    return Module.wasmTable.get(ptr).apply(null, arguments);-->
+<!--                }-->
+
+<!--                throw new Error('getDynCaller: cannot resolve wasm function table');-->
+<!--            };-->
+<!--        };-->
+<!--    }-->
+<!--</script>-->
+<script>
+    var container = document.querySelector("#unity-container");
+    var canvas = document.querySelector("#unity-canvas");
+    var loadingScreen = document.querySelector("#unity-custom-loading-screen");
+    var warningBanner = document.querySelector("#unity-warning");
+
+    function unityShowBanner(msg, type) {
+        console.warn("unityShowBanner: ");
+        function updateBannerVisibility() {
+            warningBanner.style.display = warningBanner.children.length ? 'block' : 'none';
+        }
+        var div = document.createElement('div');
+        div.innerHTML = msg;
+        warningBanner.appendChild(div);
+        if (type == 'error') div.style = 'background: red; padding: 10px;';
+        else {
+            if (type == 'warning') div.style = 'background: yellow; padding: 10px;';
+            setTimeout(function() {
+                warningBanner.removeChild(div);
+                updateBannerVisibility();
+            }, 5000);
+        }
+        updateBannerVisibility();
+    }
+
+    var buildUrl = "Build";
+    var loaderUrl = buildUrl + "/WebGLBuild.loader.js";
+    var config = {
+        dataUrl: buildUrl + "/WebGLBuild.data",
+        frameworkUrl: buildUrl + "/WebGLBuild.framework.js",
+        codeUrl: buildUrl + "/WebGLBuild.wasm",
+        streamingAssetsUrl: "StreamingAssets",
+        companyName: "The Hopeless dev team",
+        productName: "English Extract",
+        productVersion: "0.0.0.1",
+        showBanner: unityShowBanner,
+        // Ensure Unity renders to the size we control
+        matchWebGLToCanvasSize: true,
+        webglContextAttributes: {
+            alpha: false,
+            // antialias: true,
+            premultipliedAlpha: false,
+            // preserveDrawingBuffer: false
+        }
+
+    };
+
+    function afterViewportStable(cb) {
+        console.warn("afterViewportStable: ");
+        const vv = window.visualViewport;
+        let raf;
+        function run() {
+            console.warn("RESIZE: run: ");
+            cancelAnimationFrame(raf);
+            // two RAFs helps Safari settle after layout/URL bar animations
+            raf = requestAnimationFrame(() => requestAnimationFrame(cb));
+        }
+        if (vv) {
+            vv.addEventListener('resize', run, { passive: true, once: true });
+        }
+        window.addEventListener('load', run, { once: true });
+        // fallback if nothing fires
+        requestAnimationFrame(() => requestAnimationFrame(cb));
+    }
+    
+    var index = -1;
+    let unityBooted = false;
+    afterViewportStable(() => {
+        console.warn("afterViewportStable: continuation: ");
+        // Make sure the canvas/container are laid out before we create Unity
+        if (window.u59LayoutCanvas) window.u59LayoutCanvas();
+        
+        const TARGET_QUALITY = 0.8;
+        (function () {
+            // Canvas fills the JS-sized container
+            canvas.style.width = '100%';
+            canvas.style.height = '100%';
+
+            // Optional: touch devices
+            var isCoarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+            if (isCoarse) {
+                container.classList.add('unity-mobile');
+                canvas.classList.add('unity-mobile');
+            }
+
+            // Normalize DPR with visualViewport scale, then apply your target quality
+            var dpr = window.devicePixelRatio || 1;
+            var scale = (window.visualViewport && typeof window.visualViewport.scale === 'number')
+                ? window.visualViewport.scale : 1;
+            console.warn('[normalized = dpr * scale * TARGET_QUALITY]', {
+                dpr: dpr,
+                scale: scale,
+                TARGET_QUALITY: TARGET_QUALITY,
+                delimeter: '---',
+                window_devicePixelRatio: window.devicePixelRatio,
+                window_visualViewport_is_not_null: window.visualViewport != null,
+                typeof_window_visualViewport_scale_equals_number: typeof window.visualViewport.scale === 'number',
+                window_visualViewport_scale: window.visualViewport && window.visualViewport.scale,
+            });
+
+            var normalized = dpr * scale * TARGET_QUALITY;
+            normalized = Math.max(0.4, Math.min(3, normalized)); // clamp
+            config.devicePixelRatio = normalized;
+
+            console.warn('[Normalized DPR]', {
+                ua: navigator.userAgent,
+                dpr: dpr,
+                scale: scale,
+                configDPR: normalized
+            });
+        })();
+
+        console.warn("end compute dpr function. ");
+
+        if (unityBooted) return;   // важный гард
+        unityBooted = true;
+        
+        loadingScreen.style.display = "block";
+
+        // var dbg = setupWebGLOverlayInfo({
+        //     canvas: canvas,
+        //     container: container,
+        //     config: config,
+        //     qualityFactor: TARGET_QUALITY,
+        //     consoleLog: true
+        // });
+
+        // var qUI = attachQualityButtons(dbg, {
+        //     position: 'bl',
+        //     step: 0.1,
+        //     min: 0.1,
+        //     max: 4
+        // });
+
+        const script = document.createElement("script");
+        script.src = loaderUrl;
+        console.warn("script.onload: ");
+        script.onload = () => {
+            // One more layout pass right before creating the instance (safety)
+            if (window.u59LayoutCanvas) window.u59LayoutCanvas();
+            index++;
+            console.warn("script.onload: createUnityInstance: index: " + index);
+            createUnityInstance(canvas, config, (progress) => {
+                console.log("createUnityInstance: progress: " + progress);
+            }).then((unityInstance) => {
+                console.warn("createUnityInstance: finished");
+                window.unityInstance = unityInstance;
+                window.onSliderBridgeReady = function () {
+                    console.warn('SliderBridge ready! ');
+                //     if (window._showSliderControls) window._showSliderControls();
+                // };
+                //
+                // if (window.ExtSliderPositioner &&
+                //     typeof window.ExtSliderPositioner.showExternalSliderControlsAndPositionImmediately === 'function') {
+                //     window.ExtSliderPositioner.showExternalSliderControlsAndPositionImmediately();
+                // } else {
+                //     // отложенный показ, когда скрипт точно загрузится
+                //     window._showSliderControls = function () {
+                //         if (window.ExtSliderPositioner &&
+                //             typeof window.ExtSliderPositioner.showExternalSliderControlsAndPositionImmediately === 'function') {
+                //             window.ExtSliderPositioner.showExternalSliderControlsAndPositionImmediately();
+                //         }
+                //     };
+                }
+            }).catch((message) => {
+                alert(message);
+            });
+        };
+        document.body.appendChild(script);
+    });
+</script>
+</body> </html>
